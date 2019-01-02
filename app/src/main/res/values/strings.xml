@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">DaPingJi</string>
+    <string name="menu_settings">Settings</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="exit">Exit</string>
+    <string name="set_nav_bar">Set NavigationBar</string>
+    <string name="get_nav_bar">Return NavigationBar Disabled Value</string>
+    <string name="led_power">Led - Power</string>
+    <string name="led_message">Led - Message</string>
+    <string name="update_app">Update App</string>
+    <string name="update_os">Update OS</string>
+    <string name="set_app_crash">Set app crash</string>
+    <string name="get_app_crash">Get app crash</string>
+    <string name="trigger_app_crash">Trigger app crash</string>
+    <string name="trigger_app_crash_2">Trigger app crash 2 (NullPointerException)</string>
+    <string name="app_new_version">Has a new version</string>
+    <string name="restartapp">Restart Application</string>
+    <string name="reboot">Reboot System</string>
+    <string name="get_version">Get Version</string>
+    <string name="get_ipaddress">Get IPAddress</string>
+    <string name="updateapk">Update Application</string>
+    <string name="updateapk_summary">Update application by specific location</string>
+    <string name="updateapk_dialog">Please assign a path of new application.</string>
+</resources>
