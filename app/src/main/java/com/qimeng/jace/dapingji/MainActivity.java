@@ -20,6 +20,7 @@ import android.widget.Toast;
 
 import com.iprt.android_print_sdk.Table;
 import com.iprt.android_print_sdk.usb.USBPrinter;
+import com.qimeng.jace.dapingji.entity.Buy;
 import com.qimeng.jace.dapingji.entity.Commodity.CommodityEntity;
 import com.qimeng.jace.dapingji.entity.User;
 
@@ -115,6 +116,10 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
 
         @Override
         public void onPlay(CommodityEntity entity, User user) {
+            if (entity.getJf() > user.getJf()) {
+                Toast.makeText(MainActivity.this,"积分不足！",Toast.LENGTH_LONG).show();
+                return;
+            }
             showNormalDialog(entity, user);
         }
     };
@@ -138,8 +143,8 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
                                     entity.getJf() + "",
                                     user.getId() + "")
                             .subscribeOn(Schedulers.io())
-                            .subscribe(user1 -> {
-                                Log.e("Tag", user1.toString());
+                            .subscribe(buy -> {
+                                printBuy(buy, entity, user);
                             }, error -> {
                                 Log.e("Tag", error.getMessage());
                             });
@@ -161,6 +166,28 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
         initPrint();
     }
 
+
+    private void printBuy(Buy buy, CommodityEntity entity, User user) {
+        if (isConnected) {
+            usbPrinter.init();
+            usbPrinter.setCharacterMultiple(2, 2);
+            usbPrinter.printText("    勤盟环保\n");
+            usbPrinter.setPrinter(USBPrinter.COMM_PRINT_AND_NEWLINE);
+            usbPrinter.setCharacterMultiple(1, 1);
+            usbPrinter.printText("礼品兑换凭证\n");
+            usbPrinter.setPrinter(USBPrinter.COMM_PRINT_AND_NEWLINE);
+            usbPrinter.setCharacterMultiple(1, 1);
+            usbPrinter.printText("兑换人：" + user.getXm());
+            usbPrinter.setPrinter(USBPrinter.COMM_PRINT_AND_NEWLINE);
+            usbPrinter.printText("兑换品：" + entity.getMc());
+            usbPrinter.setPrinter(USBPrinter.COMM_PRINT_AND_NEWLINE);
+            usbPrinter.printText("积分消耗：" + entity.getJf() + "积分");
+            usbPrinter.setPrinter(USBPrinter.COMM_PRINT_AND_NEWLINE);
+            usbPrinter.printText("凭证号：" + buy.getDdh());
+            usbPrinter.setPrinter(USBPrinter.COMM_PRINT_AND_NEWLINE);
+            usbPrinter.cutPaper();
+        }
+    }
 
     private void initPrint() {
         manager = (UsbManager) getSystemService(Context.USB_SERVICE);
@@ -226,36 +253,6 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
         return false;
     }
 
-    private void printTest() {
-        if (isConnected) {
-            usbPrinter.init();
-            usbPrinter.setCharacterMultiple(0, 0);
-            Table table = new Table("Test", ";", new int[]{18, 8, 8, 8});
-            usbPrinter.printTable(table);
-            usbPrinter.setCharacterMultiple(1, 1);
-            table = new Table("1,第一行;	    2.00;    5.00;   10.0q0", ";", new int[]{18, 8, 8, 8});
-            usbPrinter.printTable(table);
-            usbPrinter.setCharacterMultiple(2, 2);
-            table = new Table("2,第二行;   2.00;   5.00;    10.00", ";", new int[]{18, 8, 8, 8});
-            usbPrinter.printTable(table);
-            usbPrinter.setCharacterMultiple(3, 3);
-            table = new Table("3,第三行;   1.00;   68.00;   68.00", ";", new int[]{18, 8, 8, 8});
-            usbPrinter.printTable(table);
-            usbPrinter.setCharacterMultiple(4, 4);
-            table = new Table("4,第四行;   1.00;   4.00;    4.00", ";", new int[]{18, 8, 8, 8});
-            usbPrinter.printTable(table);
-            usbPrinter.setCharacterMultiple(5, 5);
-            table = new Table("5,第五行; 1.00;   5.00;    5.00", ";", new int[]{18, 8, 8, 8});
-            usbPrinter.printTable(table);
-            usbPrinter.setCharacterMultiple(6, 6);
-            table = new Table("6,第六行;	    1.00;   2.00;    2.00", ";", new int[]{18, 8, 8, 8});
-            usbPrinter.printTable(table);
-            //换行
-            usbPrinter.setPrinter(USBPrinter.COMM_PRINT_AND_NEWLINE);
-            //切刀
-            usbPrinter.cutPaper();
-        }
-    }
 
     private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {

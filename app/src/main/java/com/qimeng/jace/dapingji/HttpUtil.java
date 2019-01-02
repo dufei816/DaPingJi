@@ -2,6 +2,7 @@ package com.qimeng.jace.dapingji;
 
 import android.util.Log;
 
+import com.qimeng.jace.dapingji.entity.Buy;
 import com.qimeng.jace.dapingji.entity.Commodity;
 import com.qimeng.jace.dapingji.entity.Image;
 import com.qimeng.jace.dapingji.entity.User;
@@ -94,13 +95,13 @@ public class HttpUtil {
         /**
          * 礼品兑换
          * @param jqbh
-         * @param lpbh
+         * @param lpid
          * @param jf
          * @param userid
          * @return
          */
         @GET("getLpdh.jsp")
-        Observable<User> getLpdh(@Query("jqbh") String jqbh,@Query("lpbh") String lpbh,@Query("jf") String jf,@Query("userid") String userid);
+        Observable<Buy> getLpdh(@Query("jqbh") String jqbh, @Query("lpid") String lpid, @Query("jf") String jf, @Query("userid") String userid);
 
     }
 

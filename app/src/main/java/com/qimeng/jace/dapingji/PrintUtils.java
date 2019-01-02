@@ -229,7 +229,7 @@
 //
 //        //设置纸长宽
 //        iPrinter.setPage(568, 1650);
-////        iPrinter.pageSetup(568, 700);
+//        iPrinter.pageSetup(568, 700);
 //        //第一个表格线
 //        //drawLine( 线宽，起始X，起始Y，结尾X，结尾Y);
 //        iPrinter.drawLine(-1, 12, 45, 568, 45);

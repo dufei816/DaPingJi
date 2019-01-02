@@ -19,8 +19,6 @@ import android.widget.TextView;
 import com.qimeng.jace.dapingji.entity.Commodity;
 import com.qimeng.jace.dapingji.entity.User;
 
-import java.util.ArrayList;
-import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -47,7 +45,6 @@ public class CommodityFragment extends Fragment {
     private static final String KEY = "User";
 
     private User user;
-
 
     private FragmentListener listener;
 
@@ -90,13 +87,6 @@ public class CommodityFragment extends Fragment {
             }
         });
 
-
-        List<Commodity.CommodityEntity> list = new ArrayList<>();
-        list.add(new Commodity.CommodityEntity("名称1", 2, "https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1545889578629&di=36f0024c357a63ddc2be20c68e37310d&imgtype=0&src=http%3A%2F%2Fpic1.16pic.com%2F00%2F07%2F65%2F16pic_765243_b.jpg"));
-        list.add(new Commodity.CommodityEntity("名称2", 4, "https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1545889578628&di=5b19166b94b763243df82b73beea2776&imgtype=0&src=http%3A%2F%2Fimg5.duitang.com%2Fuploads%2Fitem%2F201412%2F04%2F20141204151458_TE52s.thumb.700_0.jpeg"));
-        list.add(new Commodity.CommodityEntity("名称3", 5, "https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1545889578627&di=16959fd78ea2fc21107225341389e8b9&imgtype=0&src=http%3A%2F%2Fh.hiphotos.baidu.com%2Fzhidao%2Fwh%253D450%252C600%2Fsign%3Dbbbb7c0658b5c9ea62a60be7e0099a36%2Fdbb44aed2e738bd43c3cf83ca28b87d6277ff99a.jpg"));
-//        CommodityAdapter adapter = new CommodityAdapter(list, getContext());
-//        recyclerView.setAdapter(adapter);
         if (null != user && !TextUtils.isEmpty(user.getXm())) {
             tvName.setText("姓名："+user.getXm());
             tvJf.setText("积分：" + user.getJf());
