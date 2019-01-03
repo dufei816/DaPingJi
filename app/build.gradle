@@ -45,7 +45,9 @@ dependencies {
     //配合Rxjava 使用
     implementation 'com.jakewharton:butterknife:8.8.1'
     implementation 'com.android.support:recyclerview-v7:27.1.1'
+
     implementation 'com.github.bumptech.glide:glide:4.8.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.8.0'
     implementation files('libs/android_print_sdk .jar')
+    implementation 'com.google.zxing:core:3.3.0'
 }

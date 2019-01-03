@@ -1,6 +1,7 @@
 package com.qimeng.jace.dapingji;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -15,19 +16,21 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.qimeng.jace.dapingji.entity.Commodity;
+import com.qimeng.jace.dapingji.entity.PrintEntity;
 import com.qimeng.jace.dapingji.entity.User;
 
+
+import java.util.LinkedList;
+import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.Unbinder;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.schedulers.Schedulers;
-
-@SuppressLint("CheckResult")
+@SuppressLint({"CheckResult","SetTextI18n"})
 public class CommodityFragment extends Fragment {
 
     @BindView(R.id.recyclerView)
@@ -49,6 +52,8 @@ public class CommodityFragment extends Fragment {
 
     private FragmentListener listener;
 
+    private List<PrintEntity> printEntityList = new LinkedList<>();
+
     public void setListener(FragmentListener listener) {
         this.listener = listener;
     }
@@ -59,6 +64,13 @@ public class CommodityFragment extends Fragment {
 
         void onPlay(Commodity.CommodityEntity entity, User user);
 
+    }
+
+
+
+    public void changeVIew(int jf) {
+        user.setJf(jf);
+        tvJf.setText("积分：" + user.getJf());
     }
 
     @Override
@@ -100,10 +112,9 @@ public class CommodityFragment extends Fragment {
                     CommodityAdapter adapter = new CommodityAdapter(data.getLp(), getContext());
                     adapter.setListenet(entity -> {
                         if (entity.getJf() > user.getJf()) {
-
+                            showNormalDialog();
                             return;
                         }
-
                         listener.onPlay(entity, user);
                     });
                     recyclerView.setAdapter(adapter);
@@ -112,6 +123,29 @@ public class CommodityFragment extends Fragment {
                 });
         return root;
     }
+
+
+    private void showNormalDialog(){
+        /* @setIcon 设置对话框图标
+         * @setTitle 设置对话框标题
+         * @setMessage 设置对话框消息提示
+         * setXXX方法返回Dialog对象，因此可以链式设置属性
+         */
+        final AlertDialog.Builder normalDialog =
+                new AlertDialog.Builder(getContext());
+        normalDialog.setTitle("提示");
+        normalDialog.setMessage("积分不足！");
+        normalDialog.setPositiveButton("确定",
+                (dialog, which) -> {
+                    dialog.dismiss();
+                });
+        AlertDialog dialog = normalDialog.create();
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.show();
+    }
+
+
+
 
 
     public static CommodityFragment newInstance(User user) {

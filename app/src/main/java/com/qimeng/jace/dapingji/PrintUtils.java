@@ -70,7 +70,6 @@
 //
 //    public static void printTable(Resources resources, USBPrinter mPrinter) {
 //        mPrinter.init();
-//        // TODO Auto-generated method stub
 //        mPrinter.setCharacterMultiple(0, 0);
 //        String column =resources.getString(R.string.note_title);
 //        Table table;
@@ -111,7 +110,6 @@
 //        if (type.equals("全部")) {
 //            for (int i = 0; i < 10; i++) {
 //                mPrinter.init();
-//                // TODO Auto-generated method stub
 //                Log.i("12345", "xxxxxxxxxxxxxxxxxxx");
 //                mPrinter.setCharacterMultiple(0, 0);
 //                mPrinter.setLeftMargin(15, 0);
@@ -166,7 +164,6 @@
 //            }
 //        } else {
 //            mPrinter.init();
-//            // TODO Auto-generated method stub
 //            Log.i("12345", "xxxxxxxxxxxxxxxxxxx");
 //            mPrinter.setCharacterMultiple(0, 0);
 //			/**

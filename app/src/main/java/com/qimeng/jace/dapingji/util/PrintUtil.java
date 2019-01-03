@@ -1,4 +1,4 @@
-package com.qimeng.jace.dapingji;
+package com.qimeng.jace.dapingji.util;
 
 import com.iprt.android_print_sdk.usb.USBPrinter;
 

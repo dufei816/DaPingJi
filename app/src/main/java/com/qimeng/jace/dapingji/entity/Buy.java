@@ -10,6 +10,11 @@ public class Buy {
 
     private boolean success;
     private String ddh;
+    /**
+     * jf : 3
+     */
+
+    private int jf;
 
     public boolean isSuccess() {
         return success;
@@ -25,5 +30,13 @@ public class Buy {
 
     public void setDdh(String ddh) {
         this.ddh = ddh;
+    }
+
+    public int getJf() {
+        return jf;
+    }
+
+    public void setJf(int jf) {
+        this.jf = jf;
     }
 }

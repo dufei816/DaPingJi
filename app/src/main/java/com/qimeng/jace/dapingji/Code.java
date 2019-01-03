@@ -7,7 +7,8 @@ import android.hardware.usb.UsbEndpoint;
 import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
 import android.util.Log;
-import android.widget.Toast;
+
+import com.qimeng.jace.dapingji.util.Buff;
 
 import java.util.Arrays;
 
