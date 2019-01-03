@@ -15,6 +15,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.qimeng.jace.dapingji.entity.Commodity;
 import com.qimeng.jace.dapingji.entity.User;
@@ -98,6 +99,11 @@ public class CommodityFragment extends Fragment {
                     Log.e("Data", data.toString());
                     CommodityAdapter adapter = new CommodityAdapter(data.getLp(), getContext());
                     adapter.setListenet(entity -> {
+                        if (entity.getJf() > user.getJf()) {
+
+                            return;
+                        }
+
                         listener.onPlay(entity, user);
                     });
                     recyclerView.setAdapter(adapter);
