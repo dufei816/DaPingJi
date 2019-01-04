@@ -105,7 +105,6 @@ public class Code {
                     byte[] code = buff.getCode();
                     if (code != null) {
                         final String str = new String(code);
-                        Log.e(TAG, device.getDeviceName() + "====>" + str);
                         if (listener != null) {
                             listener.onCode(str);
                         }
