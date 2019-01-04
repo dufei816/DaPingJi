@@ -38,6 +38,7 @@ public class ImageFragment extends Fragment {
     Unbinder unbinder;
     private Disposable image;
     private LinearLayoutManager manager;
+    private ImageAdapter adapter;
 
 
     public static ImageFragment newInstance() {
@@ -56,30 +57,30 @@ public class ImageFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_image, container, false);
         unbinder = ButterKnife.bind(this, root);
+        manager = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
+        recyclerView.setLayoutManager(manager);
+        PagerSnapHelper snapHelper = new PagerSnapHelper();
+        snapHelper.attachToRecyclerView(recyclerView);
+        adapter = new ImageAdapter(null, getContext());
+        recyclerView.setAdapter(adapter);
+        initPic();
+        Observable.interval(10, TimeUnit.SECONDS)
+                .subscribeOn(Schedulers.newThread())
+                .subscribe(l -> initPic());
+        return root;
+    }
 
+    private void initPic() {//minutes
         HttpUtil.getInstance().getHttp().getGg()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(data -> {
                     Log.e("Http", data.toString());
-                    ImageAdapter adapter = new ImageAdapter(data.getPic(), getContext());
-                    recyclerView.setAdapter(adapter);
+                    adapter.putData(data.getPic());
                 }, error -> {
+                    Observable.timer(5, TimeUnit.SECONDS).subscribeOn(Schedulers.newThread()).subscribe(l -> initPic());
                     error.printStackTrace();
                 });
-
-        List<Image.Pic> list = new ArrayList<>();
-        list.add(new Image.Pic(R.mipmap.aaaa, "https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1545213239112&di=7592fc7398d11ab695e10da669c37aa0&imgtype=0&src=http%3A%2F%2Fim6.leaderhero.com%2Fwallpaper%2Fuser%2F201509%2F06%2Ff1c2ae87-5.jpg"));
-        list.add(new Image.Pic(R.mipmap.bbb, "https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1545213292520&di=afd8ac7108e1ba4414e8b3a3c88c3079&imgtype=0&src=http%3A%2F%2Fpic1.win4000.com%2Fmobile%2F2018-01-20%2F5a62d7cc8e6b5.jpg"));
-        list.add(new Image.Pic(R.mipmap.ccc, "https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1545213311475&di=8ced4b743827b668cfca1e0ba2f2022f&imgtype=0&src=http%3A%2F%2Fpic.qqtn.com%2Fup%2F2017-8%2F2017080315303674677.jpg"));
-
-        manager = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
-        recyclerView.setLayoutManager(manager);
-        PagerSnapHelper snapHelper = new PagerSnapHelper();
-        snapHelper.attachToRecyclerView(recyclerView);
-//        ImageAdapter adapter = new ImageAdapter(list, getContext());
-//        recyclerView.setAdapter(adapter);
-        return root;
     }
 
 

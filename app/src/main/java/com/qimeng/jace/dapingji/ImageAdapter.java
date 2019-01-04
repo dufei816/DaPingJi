@@ -28,6 +28,11 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> 
         mInflater = LayoutInflater.from(context);
     }
 
+    public void putData(List<Image.Pic> data) {
+        urls = data;
+        notifyDataSetChanged();
+    }
+
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup viewGroup, int i) {
@@ -47,7 +52,7 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> 
 
     @Override
     public int getItemCount() {
-        return Integer.MAX_VALUE;
+        return urls == null ? 0 : Integer.MAX_VALUE;
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {

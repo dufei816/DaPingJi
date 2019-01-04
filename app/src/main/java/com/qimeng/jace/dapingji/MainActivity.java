@@ -80,6 +80,11 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
             MySharedPreferences.putCode(code);
             return;
         }
+        if (code.equals("uihaoguhasnoiuhnoreiuhdfg")) {
+            Intent intent = new Intent(Settings.ACTION_SETTINGS);
+            startActivity(intent);
+            return;
+        }
 //        startFragment(new User());
         Observable.just(code)
                 .subscribeOn(Schedulers.newThread())
@@ -200,18 +205,18 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
 
-        content.setOnLongClickListener(v -> {
-            Intent intent = new Intent(Settings.ACTION_SETTINGS);
-            startActivity(intent);
-            return false;
-        });
+
 
         printThread = new Thread(() -> {
             while (printStart) {
                 try {
                     if (usbPrinter.getPrinterStates() == 0) {
                         PrintEntity entity = printEntities.take();
-                        printContent(entity.getBuy(), entity.getEntity(), entity.getUser());
+                        if (usbPrinter.getPrinterStates() == 0) {
+                            printContent(entity.getBuy(), entity.getEntity(), entity.getUser());
+                        } else {
+                            printEntities.put(entity);
+                        }
                     }
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
@@ -271,7 +276,7 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
         usbPrinter.setPrinter(USBPrinter.COMM_PRINT_AND_NEWLINE);
         usbPrinter.printText("凭证号:" + buy.getDdh());
         usbPrinter.printText("\n");
-        usbPrinter.printImage(QRCodeUtil.createQRCodeBitmap(buy.getDdh(), 240, 240), 150);
+        usbPrinter.printImage(QRCodeUtil.createQRCodeBitmap(buy.getDdh(), 240), 150);
         usbPrinter.setPrinter(USBPrinter.COMM_PRINT_AND_NEWLINE);
         usbPrinter.printText("\n");
         usbPrinter.setPrinter(USBPrinter.COMM_PRINT_AND_NEWLINE);
