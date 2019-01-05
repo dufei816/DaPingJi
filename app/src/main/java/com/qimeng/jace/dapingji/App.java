@@ -13,9 +13,9 @@ public class App extends Application {
     public void onCreate() {
         super.onCreate();
         context = this;
-        new Thread(() -> {
-            Glide.get(this).clearDiskCache();
-        }).start();
-        Glide.get(this).clearMemory();
+//        new Thread(() -> {
+//            Glide.get(this).clearDiskCache();
+//        }).start();
+//        Glide.get(this).clearMemory();
     }
 }

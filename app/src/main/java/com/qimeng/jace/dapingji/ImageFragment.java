@@ -64,7 +64,7 @@ public class ImageFragment extends Fragment {
         adapter = new ImageAdapter(null, getContext());
         recyclerView.setAdapter(adapter);
         initPic();
-        Observable.interval(10, TimeUnit.SECONDS)
+        Observable.interval(30, TimeUnit.MINUTES)
                 .subscribeOn(Schedulers.newThread())
                 .subscribe(l -> initPic());
         return root;

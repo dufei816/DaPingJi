@@ -1,40 +1,43 @@
 package com.qimeng.jace.dapingji;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.Settings;
-import android.support.v7.app.ActionBar;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.View;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
-import com.iprt.android_print_sdk.Table;
 import com.iprt.android_print_sdk.usb.USBPrinter;
 import com.qimeng.jace.dapingji.entity.Buy;
-import com.qimeng.jace.dapingji.entity.Commodity;
 import com.qimeng.jace.dapingji.entity.Commodity.CommodityEntity;
 import com.qimeng.jace.dapingji.entity.PrintEntity;
 import com.qimeng.jace.dapingji.entity.User;
+import com.qimeng.jace.dapingji.util.MainHandlerConstant;
 import com.qimeng.jace.dapingji.util.QRCodeUtil;
+import com.qimeng.jace.dapingji.util.TTSUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -42,28 +45,35 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import io.reactivex.Observable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Consumer;
 import io.reactivex.schedulers.Schedulers;
 
 @SuppressLint({"HandlerLeak", "CheckResult"})
 public class MainActivity extends AppCompatActivity implements Code.CodeListener {
 
-    private static final String TAG = "Print";
-    private static final String ACTION_USB_PRINT_PERMISSION = "com.android.usb.USB_PERMISSION";
-    public static final String ACTION_DEVICE_PERMISSION = "com.demo.USB_PERMISSION";
-
     @BindView(R.id.content)
     FrameLayout content;
 
+    private static final int CODE_FOR_WRITE_PERMISSION = 100;
+
+    private static final String TAG = "MainActivity";
+
+    private static final String ACTION_USB_PRINT_PERMISSION = "com.android.usb.USB_PERMISSION";
+    public static final String ACTION_DEVICE_PERMISSION = "com.demo.USB_PERMISSION";
 
     private USBPrinter usbPrinter;
     private boolean isConnected;
+    private TTSUtil ttsUtil;
 
     private UsbManager manager;
     private CommodityFragment currenCommodityFragment;
     private Thread printThread;
     private boolean printStart = true;
     private LinkedBlockingQueue<PrintEntity> printEntities = new LinkedBlockingQueue<>(30);
+
+    private ProgressDialog waitingDialog;
+    private Disposable initObj;
 
 
     @Override
@@ -72,6 +82,22 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
         printStart = false;
         unregisterReceiver(mUsbReceiver);
     }
+
+    private Handler initHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MainHandlerConstant.INIT_SUCCESS:
+                    initCode();
+                    initPrint();
+                    break;
+                case MainHandlerConstant.INIT_FAIL:
+                    Observable.timer(10, TimeUnit.SECONDS).subscribeOn(Schedulers.newThread()).subscribe(l -> ttsUtil.restart());
+                    break;
+            }
+        }
+    };
+
 
     @Override
     public void onCode(String code) {
@@ -162,7 +188,10 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
                             .observeOn(AndroidSchedulers.mainThread())
                             .subscribe(buy -> {
                                 if (buy.isSuccess()) {
-                                    printBuy(buy, entity, user);
+                                    showMessagelDialog("提示", "兑换成功,如果不继续兑换请退出，防止积分丢失！", ((dialog1, which1) -> {
+                                        printBuy(buy, entity, user);
+                                        dialog.dismiss();
+                                    }));
                                     currenCommodityFragment.changeVIew(buy.getJf());
                                 } else {
                                     showMessagelDialog("提示", "兑换失败！", ((dialog1, which1) -> dialog.dismiss()));
@@ -197,6 +226,14 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
         dialog.show();
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (requestCode == CODE_FOR_WRITE_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                ttsUtil = new TTSUtil(initHandler);
+            }
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -204,27 +241,43 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
-
-
-
-        printThread = new Thread(() -> {
-            while (printStart) {
-                try {
-                    if (usbPrinter.getPrinterStates() == 0) {
-                        PrintEntity entity = printEntities.take();
-                        if (usbPrinter.getPrinterStates() == 0) {
-                            printContent(entity.getBuy(), entity.getEntity(), entity.getUser());
-                        } else {
-                            printEntities.put(entity);
-                        }
+        showWaitingDialog();
+        initObj = Observable.interval(5, TimeUnit.SECONDS)
+                .subscribeOn(Schedulers.io())
+                .subscribe(l -> {
+                    if (isConnetction()) {
+                        waitingDialog.dismiss();
+                        init();
+                        initObj.dispose();
                     }
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-        init();
+                }, error -> {
+                    error.printStackTrace();
+                });
+    }
+
+    public boolean isConnetction() throws IOException, InterruptedException {
+        Runtime runtime = Runtime.getRuntime();
+        Process p = runtime.exec("ping -c 3 www.baidu.com");
+        int ret = p.waitFor();
+        if (ret == 0) {
+            return true;
+        }
+        return false;
+    }
+
+
+    private void showWaitingDialog() {
+        /* 等待Dialog具有屏蔽其他控件的交互能力
+         * @setCancelable 为使屏幕不可点击，设置为不可取消(false)
+         * 下载等事件完成后，主动调用函数关闭该Dialog
+         */
+        waitingDialog = new ProgressDialog(MainActivity.this);
+        waitingDialog.setTitle("正在初始化");
+        waitingDialog.setMessage("请稍后···");
+        waitingDialog.setIndeterminate(true);
+        waitingDialog.setCancelable(false);
+        waitingDialog.setCanceledOnTouchOutside(false);
+        waitingDialog.show();
     }
 
 
@@ -289,15 +342,45 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
         filter.addAction(ACTION_DEVICE_PERMISSION);
         filter.addAction(ACTION_USB_PRINT_PERMISSION);
         registerReceiver(mUsbReceiver, filter);
+
+        int hasWriteStoragePermission = ContextCompat.checkSelfPermission(getApplication(), Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        if (hasWriteStoragePermission == PackageManager.PERMISSION_GRANTED) {
+            ttsUtil = new TTSUtil(initHandler);
+        } else {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                            Manifest.permission.READ_EXTERNAL_STORAGE,
+                            Manifest.permission.READ_PHONE_STATE},
+                    CODE_FOR_WRITE_PERMISSION);
+        }
+        printThread = new Thread(() -> {
+            while (printStart) {
+                try {
+                    if (usbPrinter.getPrinterStates() == 0) {
+                        PrintEntity entity = printEntities.take();
+                        if (usbPrinter.getPrinterStates() == 0) {
+                            printContent(entity.getBuy(), entity.getEntity(), entity.getUser());
+                        } else {
+                            printEntities.put(entity);
+                        }
+                    }
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
         manager = (UsbManager) getSystemService(Context.USB_SERVICE);
-        initPrint();
-        initCode();
         getSupportFragmentManager().beginTransaction()
                 .setCustomAnimations(R.anim.slide_right_in, R.anim.slide_left_out)
                 .add(R.id.content, ImageFragment.newInstance()).commit();
     }
 
     private void initPrint() {
+        if (usbPrinter == null) {
+            usbPrinter = new USBPrinter(this);
+        }
         HashMap<String, UsbDevice> list = manager.getDeviceList();
         Observable.fromArray(list)
                 .subscribeOn(Schedulers.newThread())
@@ -313,9 +396,16 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
                     return true;
                 })
                 .subscribe(data -> {
-                    usbPrinter = new USBPrinter(this);
                     isConnected = usbPrinter.openConnection(data);
-                    printThread.start();
+                    if (isConnected) {
+                        printThread.start();
+                        ttsUtil.speak("打印机连接完成");
+                        Log.e(TAG, "打印机连接完成");
+                    } else {
+                        ttsUtil.speak("打印机连接失败");
+                        Log.e(TAG, "打印机连接失败");
+                        initPrint();
+                    }
                 });
     }
 
@@ -335,20 +425,9 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
                     return true;
                 })
                 .subscribe(data -> {
-                    Code code = new Code(data, manager);
+                    Code code = new Code(data, manager, ttsUtil);
                     code.setListener(this);
                 });
-    }
-
-
-    public static boolean isConnetction() throws IOException, InterruptedException {
-        Runtime runtime = Runtime.getRuntime();
-        Process p = runtime.exec("ping -c 3 www.baidu.com");
-        int ret = p.waitFor();
-        if (ret == 0) {
-            return true;
-        }
-        return false;
     }
 
 
@@ -357,20 +436,26 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
             String action = intent.getAction();
             Toast.makeText(MainActivity.this, action, Toast.LENGTH_SHORT).show();
             if (ACTION_USB_PRINT_PERMISSION.equals(action)) {
-                synchronized (this) {
-                    UsbDevice mUsbDevice = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
-                    if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
-                        isConnected = usbPrinter.openConnection(mUsbDevice);
+                UsbDevice mUsbDevice = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+                if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
+                    isConnected = usbPrinter.openConnection(mUsbDevice);
+                    if (isConnected) {
                         printThread.start();
+                        ttsUtil.speak("打印机连接完成");
+                        Log.e(TAG, "Receiver打印机连接完成");
                     } else {
-                        Log.d(TAG, "permission denied for device " + mUsbDevice);
+                        ttsUtil.speak("打印机连接失败");
+                        Log.e(TAG, "Receiver打印机连接失败");
+                        initPrint();
                     }
+                } else {
+                    Log.d(TAG, "permission denied for device " + mUsbDevice);
                 }
             } else if (ACTION_DEVICE_PERMISSION.equals(action)) {
                 UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
                 if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
                     if (device != null) {//已授权
-                        Code code = new Code(device, manager);
+                        Code code = new Code(device, manager, ttsUtil);
                         code.setListener(MainActivity.this);
                     }
                 } else {

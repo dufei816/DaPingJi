@@ -9,6 +9,7 @@ import android.hardware.usb.UsbManager;
 import android.util.Log;
 
 import com.qimeng.jace.dapingji.util.Buff;
+import com.qimeng.jace.dapingji.util.TTSUtil;
 
 import java.util.Arrays;
 
@@ -18,6 +19,7 @@ public class Code {
 
     private boolean isRunn = true;
 
+    private TTSUtil ttsUtil;
     private UsbDevice device;
     private UsbManager manager;
     private UsbEndpoint inUsbEndpoint;
@@ -28,9 +30,10 @@ public class Code {
 
     private Buff buff = new Buff();
 
-    public Code(UsbDevice device, UsbManager manager) {
+    public Code(UsbDevice device, UsbManager manager, TTSUtil util) {
         this.device = device;
         this.manager = manager;
+        this.ttsUtil = util;
         init();
     }
 
@@ -65,13 +68,13 @@ public class Code {
                 //连接成功
                 mUsbInterface = usbInterface;
                 mUsbDeviceConnection = manager.openDevice(device);
-                Log.e(TAG, "连接成功");
+                ttsUtil.speak("扫码器连接完成");
                 initConnection();
                 break;
             }
         }
         if (mUsbDeviceConnection == null) {
-            Log.e(TAG, "连接失败");
+            ttsUtil.speak("扫码器连接失败");
         }
     }
 
