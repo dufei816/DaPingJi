@@ -112,6 +112,17 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
     };
 
 
+    private void showButton() {
+        Intent intent = new Intent("android.intent.action.nvigationbar_show");
+        sendBroadcast(intent);
+    }
+
+    public void hideButton() {
+        Intent intent = new Intent("android.intent.action.nvigationbar_hide");
+        sendBroadcast(intent);
+    }
+
+
     @Override
     public void onError() {
         ttsUtil.speak("扫码器连接失败");
@@ -121,6 +132,7 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
     public void onSuccess() {
         ttsUtil.speak("扫码器连接完成");
         initPrint();
+        hideButton();
     }
 
     @Override
@@ -131,8 +143,7 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
             return;
         }
         if (code.equals("uihaoguhasnoiuhnoreiuhdfg")) {
-            Intent intent = new Intent(Settings.ACTION_SETTINGS);
-            startActivity(intent);
+            showButton();
             return;
         }
         Observable.just(code)
@@ -162,17 +173,20 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
     }
 
     private void startFragment(User user) {
-        currenCommodityFragment = CommodityFragment.newInstance(user);
-        currenCommodityFragment.setListener(listener);
-        getSupportFragmentManager()
-                .beginTransaction()
-                .setCustomAnimations(R.anim.slide_right_in, R.anim.slide_left_out)
-                .replace(R.id.content, currenCommodityFragment).commit();
+        if (currenCommodityFragment == null) {
+            currenCommodityFragment = CommodityFragment.newInstance(user);
+            currenCommodityFragment.setListener(listener);
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .setCustomAnimations(R.anim.slide_right_in, R.anim.slide_left_out)
+                    .replace(R.id.content, currenCommodityFragment).commit();
+        }
     }
 
     private CommodityFragment.FragmentListener listener = new CommodityFragment.FragmentListener() {
         @Override
         public void onQuit() {
+            currenCommodityFragment = null;
             getSupportFragmentManager()
                     .beginTransaction()
                     .setCustomAnimations(R.anim.slide_right_in, R.anim.slide_left_out)
@@ -207,17 +221,15 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
                             .observeOn(AndroidSchedulers.mainThread())
                             .subscribe(buy -> {
                                 if (buy.isSuccess()) {
-                                    showMessagelDialog("提示", "兑换成功,如果不继续兑换请退出，防止积分丢失！", ((dialog1, which1) -> {
-                                        printBuy(buy, entity, user);
-                                        dialog.dismiss();
-                                    }));
-                                    currenCommodityFragment.changeVIew(buy.getJf());
+                                    ttsUtil.speak("兑换成功,如果不继续兑换请退出，防止积分丢失！");
+                                    printBuy(buy, entity, user);
+                                    if (currenCommodityFragment != null) {
+                                        currenCommodityFragment.changeVIew(buy.getJf());
+                                    }
                                 } else {
-                                    showMessagelDialog("提示", "兑换失败！", ((dialog1, which1) -> dialog.dismiss()));
+                                    showMessagelDialog("提示", "兑换失败！", ((dialog1, which1 ) -> dialog.dismiss()));
                                 }
-                            }, error -> {
-                                Log.e("Tag", error.getMessage());
-                            });
+                            }, error -> Log.e(TAG, error.getMessage()));
                 });
         normalDialog.setNegativeButton("关闭",
                 (dialog, which) -> {
@@ -606,8 +618,6 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
                         init();
                         initObj.dispose();
                     }
-                }, error -> {
-                    error.printStackTrace();
-                });
+                }, error -> error.printStackTrace());
     }
 }

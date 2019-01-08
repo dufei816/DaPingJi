@@ -6,6 +6,7 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -50,13 +51,13 @@ public class CommodityAdapter extends RecyclerView.Adapter<CommodityAdapter.View
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         CommodityEntity data = list.get(position);
-        holder.tvJifen.setText("所需积分：" + data.getJf());
-        holder.tvMingcheng.setText("名称：" + data.getMc());
+        holder.tvJifen.setText("所需积分:" + data.getJf());
+        holder.tvMingcheng.setText("名称:" + data.getMc());
         Glide
                 .with(context)
                 .load(data.getPic())
                 .into(holder.image);
-        holder.tvDuihuan.setOnClickListener(view->{
+        holder.btnExchange.setOnClickListener(view->{
             if (listenet != null) {
                 listenet.onClick(data);
             }
@@ -75,8 +76,8 @@ public class CommodityAdapter extends RecyclerView.Adapter<CommodityAdapter.View
         TextView tvMingcheng;
         @BindView(R.id.tv_jifen)
         TextView tvJifen;
-        @BindView(R.id.tv_duihuan)
-        TextView tvDuihuan;
+        @BindView(R.id.btn_exchange)
+        Button btnExchange;
 
         ViewHolder(View view) {
             super(view);

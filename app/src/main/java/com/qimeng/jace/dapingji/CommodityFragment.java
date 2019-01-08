@@ -15,12 +15,12 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
 
 import com.qimeng.jace.dapingji.entity.Commodity;
 import com.qimeng.jace.dapingji.entity.PrintEntity;
 import com.qimeng.jace.dapingji.entity.User;
-
 
 import java.util.LinkedList;
 import java.util.List;
@@ -30,23 +30,22 @@ import butterknife.ButterKnife;
 import butterknife.Unbinder;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.schedulers.Schedulers;
-@SuppressLint({"CheckResult","SetTextI18n"})
+
+@SuppressLint({"CheckResult", "SetTextI18n"})
 public class CommodityFragment extends Fragment {
 
-    @BindView(R.id.recyclerView)
-    RecyclerView recyclerView;
-    @BindView(R.id.tv_quit1)
-    TextView tvQuit1;
-    @BindView(R.id.tv_quit2)
-    TextView tvQuit2;
-    @BindView(R.id.tv_name)
-    TextView tvName;
-    @BindView(R.id.tv_jf)
-    TextView tvJf;
 
     Unbinder unbinder;
 
     private static final String KEY = "User";
+    @BindView(R.id.tv_name)
+    TextView tvName;
+    @BindView(R.id.tv_jf)
+    TextView tvJf;
+    @BindView(R.id.recyclerView)
+    RecyclerView recyclerView;
+    @BindView(R.id.btn_quit)
+    Button btnQuit;
 
     private User user;
 
@@ -67,10 +66,9 @@ public class CommodityFragment extends Fragment {
     }
 
 
-
     public void changeVIew(int jf) {
         user.setJf(jf);
-        tvJf.setText("积分：" + user.getJf());
+        tvJf.setText("积分:" + user.getJf());
     }
 
     @Override
@@ -89,20 +87,15 @@ public class CommodityFragment extends Fragment {
         LinearLayoutManager manager = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false);
         recyclerView.setLayoutManager(manager);
         recyclerView.addItemDecoration(new DividerItemDecoration(getContext(), DividerItemDecoration.VERTICAL));
-        tvQuit1.setOnClickListener(view -> {
-            if (listener != null) {
-                listener.onQuit();
-            }
-        });
-        tvQuit2.setOnClickListener(view -> {
+        btnQuit.setOnClickListener(view -> {
             if (listener != null) {
                 listener.onQuit();
             }
         });
 
         if (null != user && !TextUtils.isEmpty(user.getXm())) {
-            tvName.setText("姓名："+user.getXm());
-            tvJf.setText("积分：" + user.getJf());
+            tvName.setText("姓名:" + user.getXm());
+            tvJf.setText("积分:" + user.getJf());
         }
         HttpUtil.getInstance().getHttp().getLp()
                 .subscribeOn(Schedulers.io())
@@ -125,7 +118,7 @@ public class CommodityFragment extends Fragment {
     }
 
 
-    private void showNormalDialog(){
+    private void showNormalDialog() {
         /* @setIcon 设置对话框图标
          * @setTitle 设置对话框标题
          * @setMessage 设置对话框消息提示
@@ -143,9 +136,6 @@ public class CommodityFragment extends Fragment {
         dialog.setCanceledOnTouchOutside(false);
         dialog.show();
     }
-
-
-
 
 
     public static CommodityFragment newInstance(User user) {
