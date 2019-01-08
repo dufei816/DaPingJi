@@ -24,6 +24,17 @@ public class MySharedPreferences {
         gson = new Gson();
     }
 
+    public static void putWiFiName(String ssd) {
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putString("WIFI", ssd);
+        editor.commit();
+    }
+
+    public static String getWiFi() {
+        String wifi = preferences.getString("WIFI", "");
+        return wifi;
+    }
+
 
     public static void putCode(String code) {
         SharedPreferences.Editor editor = preferences.edit();

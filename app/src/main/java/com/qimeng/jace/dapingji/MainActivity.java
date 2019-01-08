@@ -13,6 +13,10 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.wifi.ScanResult;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -23,6 +27,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.WindowManager;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
@@ -34,10 +39,12 @@ import com.qimeng.jace.dapingji.entity.User;
 import com.qimeng.jace.dapingji.util.MainHandlerConstant;
 import com.qimeng.jace.dapingji.util.QRCodeUtil;
 import com.qimeng.jace.dapingji.util.TTSUtil;
+import com.qimeng.jace.dapingji.util.WiFiUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -46,14 +53,17 @@ import butterknife.ButterKnife;
 import io.reactivex.Observable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
-import io.reactivex.functions.Consumer;
 import io.reactivex.schedulers.Schedulers;
 
-@SuppressLint({"HandlerLeak", "CheckResult"})
+import static android.net.wifi.WifiManager.NETWORK_STATE_CHANGED_ACTION;
+import static android.net.wifi.WifiManager.SUPPLICANT_STATE_CHANGED_ACTION;
+
+@SuppressLint({"HandlerLeak", "CheckResult", "WifiManagerLeak"})
 public class MainActivity extends AppCompatActivity implements Code.CodeListener {
 
     @BindView(R.id.content)
     FrameLayout content;
+
 
     private static final int CODE_FOR_WRITE_PERMISSION = 100;
 
@@ -66,7 +76,7 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
     private boolean isConnected;
     private TTSUtil ttsUtil;
 
-    private UsbManager manager;
+    private UsbManager usbManager;
     private CommodityFragment currenCommodityFragment;
     private Thread printThread;
     private boolean printStart = true;
@@ -74,7 +84,11 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
 
     private ProgressDialog waitingDialog;
     private Disposable initObj;
+    private Disposable wifiCheck;
 
+
+    private int currentWiFiItem = 0;
+    private WiFiUtil wiFiUtil;
 
     @Override
     protected void onDestroy() {
@@ -89,15 +103,25 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
             switch (msg.what) {
                 case MainHandlerConstant.INIT_SUCCESS:
                     initCode();
-                    initPrint();
                     break;
                 case MainHandlerConstant.INIT_FAIL:
-                    Observable.timer(10, TimeUnit.SECONDS).subscribeOn(Schedulers.newThread()).subscribe(l -> ttsUtil.restart());
+
                     break;
             }
         }
     };
 
+
+    @Override
+    public void onError() {
+        ttsUtil.speak("扫码器连接失败");
+    }
+
+    @Override
+    public void onSuccess() {
+        ttsUtil.speak("扫码器连接完成");
+        initPrint();
+    }
 
     @Override
     public void onCode(String code) {
@@ -111,7 +135,6 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
             startActivity(intent);
             return;
         }
-//        startFragment(new User());
         Observable.just(code)
                 .subscribeOn(Schedulers.newThread())
                 .filter(str -> str.indexOf("code=") != -1)
@@ -135,12 +158,8 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
                 })
                 .subscribe(user -> {
                     startFragment(user);
-                }, error);
+                }, error -> Log.e(TAG, error.getLocalizedMessage()));
     }
-
-    private Consumer<Throwable> error = throwable -> {
-
-    };
 
     private void startFragment(User user) {
         currenCommodityFragment = CommodityFragment.newInstance(user);
@@ -230,10 +249,117 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == CODE_FOR_WRITE_PERMISSION) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                ttsUtil = new TTSUtil(initHandler);
+                ttsUtil = TTSUtil.getInstance(initHandler);
             }
         }
     }
+
+    private boolean checkNetworkInfo() {
+        ConnectivityManager manager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (manager == null) {
+            return false;
+        }
+        NetworkInfo networkinfo = manager.getActiveNetworkInfo();
+        if (networkinfo == null || !networkinfo.isAvailable()) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 检测wifi是否打开
+     */
+    private void checkWiFi() {
+        if (checkNetworkInfo()) {
+            checkConnect();
+        } else {
+            if (wiFiUtil.checkState() == WifiManager.WIFI_STATE_DISABLED) {
+                wiFiUtil.openWifi();
+            }
+            wifiCheck = Observable.interval(5, TimeUnit.SECONDS)
+                    .subscribeOn(Schedulers.newThread())
+                    .subscribe(l -> {
+                        if (wiFiUtil.checkState() == WifiManager.WIFI_STATE_ENABLED) {
+                            if (checkNetworkInfo()) {
+                                checkConnect();
+                            } else {
+                                openWiFiList();
+                            }
+                            wifiCheck.dispose();
+                        }
+                    });
+        }
+    }
+
+    private void openWiFiList() {
+        wiFiUtil.creatWifiLock("MyJace");
+        wiFiUtil.startScan();
+        List<ScanResult> list = wiFiUtil.getWifiList();
+        String[] strs = new String[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            strs[i] = list.get(i).SSID;
+        }
+        showSingleChoiceDialog(this, strs);
+    }
+
+    /**
+     * 连接wifi
+     *
+     * @param item
+     * @param password
+     */
+    private void connectWiFi(ScanResult item, String password) {
+        if (item.capabilities.contains("WPA2") || item.capabilities.contains("WPA-PSK")) {
+            wiFiUtil.addWiFiNetwork(item.SSID, password, WiFiUtil.Data.WIFI_CIPHER_WPA2);
+        } else if (item.capabilities.contains("WPA")) {
+            wiFiUtil.addWiFiNetwork(item.SSID, password, WiFiUtil.Data.WIFI_CIPHER_WPA);
+        } else if (item.capabilities.contains("WEP")) {
+            wiFiUtil.addWiFiNetwork(item.SSID, password, WiFiUtil.Data.WIFI_CIPHER_WEP);
+        } else {
+            wiFiUtil.addWiFiNetwork(item.SSID, "", WiFiUtil.Data.WIFI_CIPHER_NOPASS);
+        }
+    }
+
+    /**
+     * wifi列表
+     *
+     * @param context
+     * @param items
+     */
+    private void showSingleChoiceDialog(Context context, String[] items) {
+        currentWiFiItem = 0;
+        AlertDialog.Builder singleChoiceDialog =
+                new AlertDialog.Builder(context);
+        singleChoiceDialog.setTitle("请选择wifi");
+        // 第二个参数是默认选项，此处设置为0
+        singleChoiceDialog.setSingleChoiceItems(items, currentWiFiItem,
+                (dialog, which) -> {
+                    currentWiFiItem = which;
+                });
+        singleChoiceDialog.setPositiveButton("确定",
+                (dialog, which) -> {
+                    dialog.dismiss();
+                    showInputDialog();
+                });
+        singleChoiceDialog.show();
+    }
+
+
+    private void showInputDialog() {
+        EditText editText = new EditText(MainActivity.this);
+        AlertDialog.Builder inputDialog = new AlertDialog.Builder(MainActivity.this);
+        inputDialog.setTitle("请输入wifi密码").setView(editText);
+        editText.setHint("请输入");
+        inputDialog.setPositiveButton("确定", (dialog, which) -> {
+            String pwd = editText.getText().toString();
+            ScanResult item = wiFiUtil.getWifiList().get(currentWiFiItem);
+            MySharedPreferences.putWiFiName(item.SSID);
+            connectWiFi(item, pwd);
+            dialog.dismiss();
+        });
+        inputDialog.show();
+    }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -241,18 +367,18 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
-        showWaitingDialog();
-        initObj = Observable.interval(5, TimeUnit.SECONDS)
-                .subscribeOn(Schedulers.io())
-                .subscribe(l -> {
-                    if (isConnetction()) {
-                        waitingDialog.dismiss();
-                        init();
-                        initObj.dispose();
-                    }
-                }, error -> {
-                    error.printStackTrace();
-                });
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ACTION_DEVICE_PERMISSION);
+        filter.addAction(ACTION_USB_PRINT_PERMISSION);
+        filter.addAction(SUPPLICANT_STATE_CHANGED_ACTION);
+        filter.addAction(NETWORK_STATE_CHANGED_ACTION);
+        registerReceiver(mUsbReceiver, filter);
+
+
+        wiFiUtil = WiFiUtil.getInstance(this);
+        checkWiFi();
+//        openWiFiList();
     }
 
     public boolean isConnetction() throws IOException, InterruptedException {
@@ -267,6 +393,9 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
 
 
     private void showWaitingDialog() {
+        if (waitingDialog != null && waitingDialog.isShowing()) {
+            return;
+        }
         /* 等待Dialog具有屏蔽其他控件的交互能力
          * @setCancelable 为使屏幕不可点击，设置为不可取消(false)
          * 下载等事件完成后，主动调用函数关闭该Dialog
@@ -302,7 +431,6 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
                     }));
                     break;
                 case 3:
-                    initPrint();
                     break;
             }
         }
@@ -338,22 +466,21 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
     }
 
     private void init() {
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(ACTION_DEVICE_PERMISSION);
-        filter.addAction(ACTION_USB_PRINT_PERMISSION);
-        registerReceiver(mUsbReceiver, filter);
+        usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 
-        int hasWriteStoragePermission = ContextCompat.checkSelfPermission(getApplication(), Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        int hasWriteStoragePermission = ContextCompat.checkSelfPermission(getApplication(), Manifest.permission.ACCESS_COARSE_LOCATION);
         if (hasWriteStoragePermission == PackageManager.PERMISSION_GRANTED) {
-            ttsUtil = new TTSUtil(initHandler);
+            ttsUtil = TTSUtil.getInstance(initHandler);
         } else {
             ActivityCompat.requestPermissions(this,
                     new String[]{
                             Manifest.permission.WRITE_EXTERNAL_STORAGE,
                             Manifest.permission.READ_EXTERNAL_STORAGE,
-                            Manifest.permission.READ_PHONE_STATE},
+                            Manifest.permission.READ_PHONE_STATE,
+                            Manifest.permission.ACCESS_COARSE_LOCATION},
                     CODE_FOR_WRITE_PERMISSION);
         }
+
         printThread = new Thread(() -> {
             while (printStart) {
                 try {
@@ -371,26 +498,26 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
                 }
             }
         });
-        manager = (UsbManager) getSystemService(Context.USB_SERVICE);
         getSupportFragmentManager().beginTransaction()
                 .setCustomAnimations(R.anim.slide_right_in, R.anim.slide_left_out)
                 .add(R.id.content, ImageFragment.newInstance()).commit();
     }
 
+
     private void initPrint() {
         if (usbPrinter == null) {
             usbPrinter = new USBPrinter(this);
         }
-        HashMap<String, UsbDevice> list = manager.getDeviceList();
+        HashMap<String, UsbDevice> list = usbManager.getDeviceList();
         Observable.fromArray(list)
                 .subscribeOn(Schedulers.newThread())
                 .flatMap(data -> Observable.fromIterable(new ArrayList<>(data.values())))
                 .filter(data -> data.getProductId() == 22304 && data.getVendorId() == 1155)
                 .filter(data -> {
-                    if (!manager.hasPermission(data)) {
+                    if (!usbManager.hasPermission(data)) {
                         PendingIntent mPermissionIntent = PendingIntent.getBroadcast(this,
                                 0, new Intent(ACTION_USB_PRINT_PERMISSION), 0);
-                        manager.requestPermission(data, mPermissionIntent);
+                        usbManager.requestPermission(data, mPermissionIntent);
                         return false;
                     }
                     return true;
@@ -400,32 +527,31 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
                     if (isConnected) {
                         printThread.start();
                         ttsUtil.speak("打印机连接完成");
-                        Log.e(TAG, "打印机连接完成");
                     } else {
                         ttsUtil.speak("打印机连接失败");
-                        Log.e(TAG, "打印机连接失败");
-                        initPrint();
                     }
                 });
     }
 
     private void initCode() {
-        HashMap<String, UsbDevice> list = manager.getDeviceList();
+        HashMap<String, UsbDevice> list = usbManager.getDeviceList();
         Observable.fromArray(list)
                 .subscribeOn(Schedulers.newThread())
                 .flatMap(data -> Observable.fromIterable(new ArrayList<>(data.values())))
                 .filter(data -> data.getProductId() == 9930 && data.getVendorId() == 11734)
                 .filter(data -> {
-                    if (!manager.hasPermission(data)) {
+                    Log.e(TAG, "initCode");
+                    if (!usbManager.hasPermission(data)) {
                         PendingIntent mPermissionIntent = PendingIntent.getBroadcast(this,
                                 0, new Intent(ACTION_DEVICE_PERMISSION), 0);
-                        manager.requestPermission(data, mPermissionIntent);
+                        usbManager.requestPermission(data, mPermissionIntent);
                         return false;
                     }
                     return true;
                 })
                 .subscribe(data -> {
-                    Code code = new Code(data, manager, ttsUtil);
+                    Log.e(TAG, "initCode1");
+                    Code code = new Code(data, usbManager);
                     code.setListener(this);
                 });
     }
@@ -434,7 +560,6 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
     private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            Toast.makeText(MainActivity.this, action, Toast.LENGTH_SHORT).show();
             if (ACTION_USB_PRINT_PERMISSION.equals(action)) {
                 UsbDevice mUsbDevice = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
                 if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
@@ -442,11 +567,8 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
                     if (isConnected) {
                         printThread.start();
                         ttsUtil.speak("打印机连接完成");
-                        Log.e(TAG, "Receiver打印机连接完成");
                     } else {
                         ttsUtil.speak("打印机连接失败");
-                        Log.e(TAG, "Receiver打印机连接失败");
-                        initPrint();
                     }
                 } else {
                     Log.d(TAG, "permission denied for device " + mUsbDevice);
@@ -454,14 +576,38 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
             } else if (ACTION_DEVICE_PERMISSION.equals(action)) {
                 UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
                 if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
-                    if (device != null) {//已授权
-                        Code code = new Code(device, manager, ttsUtil);
-                        code.setListener(MainActivity.this);
-                    }
+                    Code code = new Code(device, usbManager);
+                    code.setListener(MainActivity.this);
                 } else {
                     Log.d(TAG, "permission denied for device " + device);
+                }
+            } else if (SUPPLICANT_STATE_CHANGED_ACTION.equals(action)) {
+                int linkWifiResult = intent.getIntExtra(WifiManager.EXTRA_SUPPLICANT_ERROR, 123);
+                if (linkWifiResult == WifiManager.ERROR_AUTHENTICATING) {
+                    openWiFiList();
+                }
+            } else if (NETWORK_STATE_CHANGED_ACTION.equals(action)) {
+                NetworkInfo info = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
+                if (info.getState().equals(NetworkInfo.State.CONNECTED)) {
+                    checkConnect();
                 }
             }
         }
     };
+
+    private void checkConnect() {
+        if (initObj != null) return;
+        showWaitingDialog();
+        initObj = Observable.interval(5, TimeUnit.SECONDS)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(l -> {
+                    if (isConnetction()) {
+                        waitingDialog.dismiss();
+                        init();
+                        initObj.dispose();
+                    }
+                }, error -> {
+                    error.printStackTrace();
+                });
+    }
 }

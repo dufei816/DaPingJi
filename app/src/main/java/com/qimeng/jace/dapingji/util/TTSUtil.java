@@ -32,7 +32,18 @@ public class TTSUtil {
 
     private Handler myHandler;
 
-    public TTSUtil(Handler handler) {
+    public static TTSUtil ttsUtil;
+
+    public static TTSUtil getInstance(Handler handler) {
+        if (ttsUtil == null) {
+            synchronized (TTSUtil.class) {
+                ttsUtil = new TTSUtil(handler);
+            }
+        }
+        return ttsUtil;
+    }
+
+    private TTSUtil(Handler handler) {
         this.myHandler = handler;
         new Thread(() -> init()).start();
     }

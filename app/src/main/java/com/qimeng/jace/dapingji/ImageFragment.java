@@ -13,11 +13,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
-import com.qimeng.jace.dapingji.entity.Image;
-
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import butterknife.BindView;
@@ -33,7 +30,6 @@ public class ImageFragment extends Fragment {
 
     @BindView(R.id.recyclerView)
     RecyclerView recyclerView;
-
 
     Unbinder unbinder;
     private Disposable image;

@@ -19,7 +19,6 @@ public class Code {
 
     private boolean isRunn = true;
 
-    private TTSUtil ttsUtil;
     private UsbDevice device;
     private UsbManager manager;
     private UsbEndpoint inUsbEndpoint;
@@ -30,15 +29,14 @@ public class Code {
 
     private Buff buff = new Buff();
 
-    public Code(UsbDevice device, UsbManager manager, TTSUtil util) {
+    public Code(UsbDevice device, UsbManager manager) {
         this.device = device;
         this.manager = manager;
-        this.ttsUtil = util;
-        init();
     }
 
     public void setListener(CodeListener listener) {
         this.listener = listener;
+        init();
     }
 
     private void init() {
@@ -68,13 +66,13 @@ public class Code {
                 //连接成功
                 mUsbInterface = usbInterface;
                 mUsbDeviceConnection = manager.openDevice(device);
-                ttsUtil.speak("扫码器连接完成");
+                listener.onSuccess();
                 initConnection();
                 break;
             }
         }
         if (mUsbDeviceConnection == null) {
-            ttsUtil.speak("扫码器连接失败");
+            listener.onError();
         }
     }
 
@@ -121,6 +119,10 @@ public class Code {
 
 
     public interface CodeListener {
+
+        void onError();
+
+        void onSuccess();
 
         void onCode(String code);
 
