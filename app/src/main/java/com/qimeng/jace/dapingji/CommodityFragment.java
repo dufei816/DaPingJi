@@ -97,7 +97,7 @@ public class CommodityFragment extends Fragment {
             tvName.setText("姓名:" + user.getXm());
             tvJf.setText("积分:" + user.getJf());
         }
-        HttpUtil.getInstance().getHttp().getLp()
+        HttpUtil.getInstance().getHttp().getLp(MySharedPreferences.getCode())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(data -> {

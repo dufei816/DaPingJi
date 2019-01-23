@@ -13,6 +13,7 @@ public class App extends Application {
     public void onCreate() {
         super.onCreate();
         context = this;
+        MySharedPreferences.getInstance();
 //        new Thread(() -> {
 //            Glide.get(this).clearDiskCache();
 //        }).start();

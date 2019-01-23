@@ -67,7 +67,7 @@ public class ImageFragment extends Fragment {
     }
 
     private void initPic() {//minutes
-        HttpUtil.getInstance().getHttp().getGg()
+        HttpUtil.getInstance().getHttp().getGg(MySharedPreferences.getCode())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(data -> {

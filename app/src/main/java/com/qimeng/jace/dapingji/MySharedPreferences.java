@@ -43,7 +43,7 @@ public class MySharedPreferences {
     }
 
     public static String getCode() {
-        String code = preferences.getString("Code", "");
+        String code = preferences.getString("Code", "123456");
         return code;
     }
 }

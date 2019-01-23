@@ -137,9 +137,19 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
 
     @Override
     public void onCode(String code) {
+        if (code.indexOf("HEXIAO") != -1) {
+            String dingdan = code.substring(6);
+            runOnUiThread(() -> {
+                showMessagelDialog("提示", "是否核销该订单？", ((dialogInterface, i) -> dialogInterface.dismiss()), (dialogInterface, i) -> {
+                    hexiao(dingdan);
+                    dialogInterface.dismiss();
+                });
+            });
+        }
         if (code.indexOf("SetBH") != -1) {
             code = code.substring(5);
             MySharedPreferences.putCode(code);
+            runOnUiThread(() -> Toast.makeText(this, "设置成功", Toast.LENGTH_SHORT).show());
             return;
         }
         if (code.equals("uihaoguhasnoiuhnoreiuhdfg")) {
@@ -170,6 +180,27 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
                 .subscribe(user -> {
                     startFragment(user);
                 }, error -> Log.e(TAG, error.getLocalizedMessage()));
+    }
+
+    private void hexiao(String code) {
+        HttpUtil.getInstance().getHttp().hxdd(code)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(data -> {
+                    if (data.isSuccess()) {
+                        showMessagelDialog("提示", "核销成功", null, (dialog, i) -> {
+                            dialog.dismiss();
+                        });
+                    } else {
+                        showMessagelDialog("提示", "核销失败", null, (dialog, i) -> {
+                            dialog.dismiss();
+                        });
+                    }
+                }, error -> {
+                    showMessagelDialog("提示", "网络请求失败", null, (dialog, i) -> {
+                        dialog.dismiss();
+                    });
+                });
     }
 
     private void startFragment(User user) {
@@ -213,7 +244,7 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
         normalDialog.setPositiveButton("确定",
                 (dialog, which) -> {
                     HttpUtil.getInstance().getHttp()
-                            .getLpdh("123456",
+                            .getLpdh(MySharedPreferences.getCode(),
                                     entity.getId() + "",
                                     entity.getJf() + "",
                                     user.getId() + "")
@@ -227,7 +258,7 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
                                         currenCommodityFragment.changeVIew(buy.getJf());
                                     }
                                 } else {
-                                    showMessagelDialog("提示", "兑换失败！", ((dialog1, which1 ) -> dialog.dismiss()));
+                                    showMessagelDialog("提示", "兑换失败！", null, ((dialog1, which1) -> dialog.dismiss()));
                                 }
                             }, error -> Log.e(TAG, error.getMessage()));
                 });
@@ -241,7 +272,7 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
     }
 
 
-    private void showMessagelDialog(String title, String content, DialogInterface.OnClickListener dialog1) {
+    private void showMessagelDialog(String title, String content, DialogInterface.OnClickListener dialog1, DialogInterface.OnClickListener dialog2) {
         /* @setIcon 设置对话框图标
          * @setTitle 设置对话框标题
          * @setMessage 设置对话框消息提示
@@ -251,7 +282,10 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
                 new AlertDialog.Builder(MainActivity.this);
         normalDialog.setTitle(title);
         normalDialog.setMessage(content);
-        normalDialog.setPositiveButton("确定", dialog1);
+        if (dialog1 != null) {
+            normalDialog.setNegativeButton("取消", dialog1);
+        }
+        normalDialog.setPositiveButton("确定", dialog2);
         AlertDialog dialog = normalDialog.create();
         dialog.setCanceledOnTouchOutside(false);
         dialog.show();
@@ -387,9 +421,12 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
         filter.addAction(NETWORK_STATE_CHANGED_ACTION);
         registerReceiver(mUsbReceiver, filter);
 
+        showButton();
 
-        wiFiUtil = WiFiUtil.getInstance(this);
-        checkWiFi();
+        checkConnect();
+
+//        wiFiUtil = WiFiUtil.getInstance(this);
+//        checkWiFi();
 //        openWiFiList();
     }
 
@@ -433,12 +470,12 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
             int states = usbPrinter.getPrinterStates();
             switch (states) {
                 case 1:
-                    showMessagelDialog("提示", "打印机缺纸请工作人员换纸！", (dialog, which) -> {
+                    showMessagelDialog("提示", "打印机缺纸请工作人员换纸！", null, (dialog, which) -> {
                         dialog.dismiss();
                     });
                     break;
                 case 2:
-                    showMessagelDialog("提示", "打印机盖未盖好，请仔细检查打印机！", ((dialog, which) -> {
+                    showMessagelDialog("提示", "打印机盖未盖好，请仔细检查打印机！", null, ((dialog, which) -> {
                         dialog.dismiss();
                     }));
                     break;
@@ -469,7 +506,7 @@ public class MainActivity extends AppCompatActivity implements Code.CodeListener
         usbPrinter.setPrinter(USBPrinter.COMM_PRINT_AND_NEWLINE);
         usbPrinter.printText("凭证号:" + buy.getDdh());
         usbPrinter.printText("\n");
-        usbPrinter.printImage(QRCodeUtil.createQRCodeBitmap(buy.getDdh(), 240), 150);
+        usbPrinter.printImage(QRCodeUtil.createQRCodeBitmap("HEXIAO" + buy.getDdh(), 240), 150);
         usbPrinter.setPrinter(USBPrinter.COMM_PRINT_AND_NEWLINE);
         usbPrinter.printText("\n");
         usbPrinter.setPrinter(USBPrinter.COMM_PRINT_AND_NEWLINE);

@@ -68,20 +68,32 @@ public class HttpUtil {
         http = retrofit.create(Http.class);
     }
 
+    //http://112.74.160.179/gjj_weixin/portal/inf/hxdd.jsp?ddh=20190103111440142
     public interface Http{
+
+
+
+        /**
+         * 核销
+         * @return
+         */
+        @GET("hxdd.jsp")
+        Observable<User> hxdd(@Query("ddh") String ddh);
+
+
         /**
          * 商品接口
          * @return
          */
         @GET("getLp.jsp")
-        Observable<Commodity> getLp();
+        Observable<Commodity> getLp(@Query("jqbh") String jqbh);
 
         /**
          * 广告图接口
          * @return
          */
         @GET("getGg.jsp")
-        Observable<Image> getGg();
+        Observable<Image> getGg(@Query("jqbh") String jqbh);
 
         /**
          * 获取用户
